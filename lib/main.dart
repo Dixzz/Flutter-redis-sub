@@ -12,10 +12,12 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:redis/redis.dart';
+import 'package:redis_test/sec_body_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 void main() async {
   await dotenv.load(fileName: ".env");
+  initEncrption();
   runApp(const MyApp());
 }
 
@@ -191,16 +193,36 @@ class _MyHomePageState extends State<MyHomePage> {
         (event) async {
           log('Gawd $event');
           if (subs?.isPaused == true) return;
-          final type = event[0];
+          final type = decrypt(event);
+
+          // final type = event[0];
           if (type == 'subscribe') {
             setState(() {
               listening = true;
             });
           } else if (type == 'message') {
-            final content = event[2];
-            await flutterLocalNotificationsPlugin.show(rnd.nextInt(1000),
-                'plain title', 'Click to view!', notificationDetails,
-                payload: content);
+            final content = event[2].toString();
+            if(content.isEmpty) return;
+            final Map type = jsonDecode(content);
+            switch(type['type']) {
+              case 'selection':
+                await flutterLocalNotificationsPlugin.show(rnd.nextInt(1000),
+                    'Copyable content', 'Click to copy', notificationDetails,
+                    payload: content);
+                break;
+              case 'image':
+                await flutterLocalNotificationsPlugin.show(rnd.nextInt(1000),
+                    'Viewable image', 'Click to copy', notificationDetails,
+                    payload: content);
+                break;
+              case 'page':
+                await flutterLocalNotificationsPlugin.show(rnd.nextInt(1000),
+                    'Browsable', 'Click to browse', notificationDetails,
+                    payload: content);
+                break;
+              default:
+                break;
+            }
           }
         },
         cancelOnError: true,
